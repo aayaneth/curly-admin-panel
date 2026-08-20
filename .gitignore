@@ -1,0 +1,48 @@
+# --- Environment Variables & Secrets ---
+.env
+.env.*
+.env.local
+.env.*.local
+*.env
+**/.env
+**/.env.*
+backend_admin_panel/.env
+
+# --- Node / Frontend Build & Dependencies ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- Python Artifacts & Virtual Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Operating System & Editor Files ---
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Legacy files
+old_index.html

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curly Admin | Face-auth</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+
+        .neu-flat {
+            background-color: #e2e8f0;
+            box-shadow: 4px 4px 10px rgba(163, 177, 198, 0.35), -4px -4px 10px rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 16px;
+        }
+
+        .neu-inset {
+            background-color: #dbe2ec;
+            box-shadow: inset 2px 2px 5px rgba(163, 177, 198, 0.4), inset -2px -2px 5px rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+        }
+
+        .btn-neu { 
+            transition: all 0.15s ease; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+        }
+        .btn-neu:active { 
+            box-shadow: inset 2px 2px 5px rgba(163, 177, 198, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.6); 
+            transform: scale(0.99); 
+        }
+
+        .sidebar-item-active { 
+            box-shadow: inset 2px 2px 5px rgba(163, 177, 198, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.6); 
+            color: #2563eb; 
+            font-weight: 600;
+        }
+
+        .status-green { color: #10b981; }
+        .status-red { color: #ef4444; }
+        .status-amber { color: #f59e0b; }
+
+        input, select { 
+            background: transparent; 
+            border: none; 
+            outline: none; 
+        }
+    </style>
+</head>
+
+<body x-data="adminPanel" class="bg-[#e2e8f0] text-gray-800">
+
+    <!-- NOTIFICATION SYSTEM -->
+    <div x-cloak x-show="notification.show" x-transition class="fixed top-4 right-4 left-4 md:left-auto md:max-w-sm z-[100] neu-flat px-5 py-4 flex items-center justify-between gap-3" :class="notification.type === 'error' ? 'text-red-500' : notification.type === 'warning' ? 'text-amber-500' : 'text-emerald-500'">
+        <div class="flex items-center gap-3 truncate">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="notification.type === 'error' ? 'bg-red-500' : notification.type === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+            <p class="text-sm font-semibold truncate" x-text="notification.message"></p>
+        </div>
+        <button type="button" @click="notification.show = false" class="opacity-60 hover:opacity-100 font-bold">×</button>
+    </div>
+
+    <!-- LOGIN OVERLAY -->
+    <template x-if="!isLoggedIn">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#e2e8f0]">
+            <div class="w-full max-w-md p-8 neu-flat">
+                <div class="flex flex-col items-center mb-8">
+                    <!-- Circular Logo Container -->
+                    <div class="w-20 h-20 mb-4 neu-flat rounded-full flex items-center justify-center p-2 overflow-hidden">
+                        <img src="new_curly_white-circle.png" alt="Curly" class="w-full h-full object-contain rounded-full">
+                    </div>
+                    <h1 class="text-2xl font-bold tracking-tight">Curly Admin</h1>
+                </div>
+                
+                <button @click="loginWithGoogle()" class="w-full py-3.5 font-bold text-gray-700 bg-white border-0 rounded-xl neu-flat btn-neu flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <!-- APP SHELL -->
+    <div x-show="isLoggedIn" class="flex min-h-screen overflow-hidden">
+        
+        <!-- DESKTOP SIDEBAR -->
+        <aside class="w-72 hidden md:flex flex-col p-6 space-y-8 h-screen sticky top-0 shrink-0 border-r border-gray-300/40">
+            <div class="flex items-center gap-3 px-2 mb-4">
+                <div> <img src="new_curly_white-circle.png" alt="Curly" width="50" height="50"> </div>
+                <span class="font-bold text-xl tracking-tight">Curly Admin</span>
+            </div>
+
+            <nav class="flex-1 space-y-4">
+                <button @click="view = 'dashboard'" :class="view === 'dashboard' ? 'sidebar-item-active' : ''" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard
+                </button>
+                <button @click="view = 'personnel'" :class="view === 'personnel' ? 'sidebar-item-active' : ''" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Personnel
+                </button>
+                <button @click="view = 'system'" :class="view === 'system' ? 'sidebar-item-active' : ''" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Server Operations
+                </button>
+            </nav>
+
+            <div class="pt-6 border-t border-gray-300">
+                <button @click="logout()" class="w-full text-red-500 opacity-80 hover:opacity-100 transition-all text-sm font-semibold">Sign Out</button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT CONTAINER (pb-28 added for mobile nav clearance) -->
+        <main class="flex-1 p-4 md:p-10 pb-28 md:pb-10 overflow-y-auto max-h-screen">
+            
+            <header class="flex items-center justify-between gap-4 mb-6 md:mb-8">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold capitalize tracking-tight" x-text="view === 'system' ? 'System Operations' : view"></h2>
+                    <p class="opacity-60 text-xs md:text-sm mt-0.5">Welcome back, <span class="font-bold text-blue-500" x-text="userRole">Admin</span></p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full neu-flat flex items-center justify-center overflow-hidden shrink-0">
+                        <img :src="userAvatar || 'https://ui-avatars.com/api/?name=Admin+User&background=random'" alt="Avatar">
+                    </div>
+                </div>
+            </header>
+
+            <!-- 1. DASHBOARD VIEW -->
+            <template x-if="view === 'dashboard'">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg md:text-xl font-bold tracking-tight">Today's Activity</h2>
+                        <span class="text-xs opacity-60 font-mono" x-text="todayLogs.length + ' entries today'"></span>
+                    </div>
+
+                    <!-- DESKTOP TABLE (Hidden on Mobile) -->
+                    <div class="hidden md:block">
+                        <div class="grid grid-cols-6 px-6 py-2 text-xs font-bold uppercase tracking-wider opacity-60">
+                            <div>Name</div>
+                            <div>Student ID</div>
+                            <div>Role</div>
+                            <div>Department</div>
+                            <div>Date & Time</div>
+                            <div class="text-right">Entry</div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="log in todayLogs" :key="log.id">
+                                <div class="neu-flat px-6 py-4 rounded-xl grid grid-cols-6 items-center text-sm">
+                                    <div class="font-semibold truncate pr-2" x-text="log.name"></div>
+                                    <div class="font-mono text-xs opacity-80 truncate pr-2" x-text="log.person_id"></div>
+                                    <div class="opacity-75 truncate pr-2 text-xs" x-text="log.role"></div>
+                                    <div class="opacity-75 truncate pr-2 text-xs" x-text="log.department"></div>
+                                    <div class="text-xs opacity-70">
+                                        <span x-text="log.dateStr"></span>, <span class="font-mono" x-text="log.timeStr"></span>
+                                    </div>
+                                    <div class="text-right font-mono font-bold text-xs uppercase tracking-wider opacity-80" x-text="log.type"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- MOBILE CARD LIST (Hidden on Desktop) -->
+                    <div class="block md:hidden space-y-3">
+                        <template x-for="log in todayLogs" :key="'mob-' + log.id">
+                            <div class="neu-flat p-4 space-y-2 text-sm">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-bold text-base" x-text="log.name"></div>
+                                        <div class="font-mono text-xs opacity-70" x-text="log.person_id"></div>
+                                    </div>
+                                    <span class="text-xs font-mono font-bold px-2 py-1 neu-inset text-blue-600 uppercase" x-text="log.type"></span>
+                                </div>
+                                <div class="flex justify-between text-xs opacity-80 pt-1 border-t border-gray-300/40">
+                                    <div><span class="opacity-50">Role:</span> <span class="font-medium" x-text="log.role"></span></div>
+                                    <div><span class="opacity-50">Dept:</span> <span class="font-medium" x-text="log.department"></span></div>
+                                </div>
+                                <div class="text-[11px] opacity-60 text-right">
+                                    <span x-text="log.dateStr"></span> • <span class="font-mono" x-text="log.timeStr"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Empty State -->
+                    <template x-if="todayLogs.length === 0 && !loadingLogs">
+                        <div class="neu-flat p-8 text-center opacity-50 text-sm">
+                            No access activity recorded for today.
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- 2. PERSONNEL VIEW -->
+            <template x-if="view === 'personnel'">
+                <div class="space-y-6">
+                    <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+                        <div class="neu-inset px-4 py-2.5 w-full lg:w-1/3">
+                            <input type="text" x-model="searchQuery" class="w-full text-sm" placeholder="Search personnel...">
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                            <div class="neu-inset px-4 py-2.5 flex-1 lg:w-56">
+                                <input type="password" x-model="adminKey" @input="saveUserAdminKey()" class="w-full text-sm" placeholder="Enter admin key" autocomplete="off">
+                            </div>
+                            <button type="button" @click="fetchPersonnel()" :disabled="loadingPersonnel" class="neu-flat btn-neu px-4 py-2.5 text-blue-600 font-bold text-sm disabled:opacity-50">
+                                <span x-text="loadingPersonnel ? 'Connecting...' : 'Connect'"></span>
+                            </button>
+                            <button @click="openAddModal()" :disabled="!adminKey.trim()" class="neu-flat btn-neu px-4 py-2.5 text-blue-600 font-bold text-sm disabled:opacity-50">
+                                + Add Personnel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div x-show="loadingPersonnel" class="neu-inset px-4 py-3 text-sm text-blue-500 font-semibold">
+                        Loading personnel from the access-control server…
+                    </div>
+
+                    <div x-show="personnelLoadError" class="neu-inset px-4 py-3 text-sm text-red-500 font-semibold" x-text="personnelLoadError"></div>
+
+                    <div x-show="!loadingPersonnel && !personnelLoadError && personnel.length === 0" class="neu-inset px-4 py-3 text-sm opacity-60">
+                        Enter the admin key and click Connect to load personnel.
+                    </div>
+
+                    <!-- DESKTOP TABLE -->
+                    <div class="hidden md:block neu-flat overflow-hidden" x-show="personnel.length > 0">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-300">
+                                    <th class="p-4 text-xs font-bold opacity-60">PERSONNEL</th>
+                                    <th class="p-4 text-xs font-bold opacity-60">DEPARTMENT</th>
+                                    <th class="p-4 text-xs font-bold opacity-60">ENROLLMENT</th>
+                                    <th class="p-4 text-xs font-bold opacity-60">STATUS</th>
+                                    <th class="p-4 text-xs font-bold opacity-60 text-right">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="person in filteredPersonnel" :key="person.id">
+                                    <tr class="hover:bg-black/5 transition-colors border-b border-gray-300/40">
+                                        <td class="p-4"><p class="font-semibold text-sm" x-text="person.name"></p><p class="text-[11px] opacity-60" x-text="person.role"></p></td>
+                                        <td class="p-4 text-sm font-medium" x-text="person.dept"></td>
+                                        <td class="p-4"><span :class="person.enrolled ? 'status-green' : 'status-amber'" class="text-[10px] font-bold uppercase" x-text="person.enrolled ? 'Complete' : 'Pending'"></span></td>
+                                        <td class="p-4"><span :class="person.status === 'Active' ? 'status-green' : 'text-gray-400'" class="text-[10px] font-bold uppercase" x-text="person.status"></span></td>
+                                        <td class="p-4 text-right">
+                                            <button @click="openEditModal(person)" class="text-xs font-bold text-blue-500 mx-2">Edit</button>
+                                            <button @click="deletePersonnel(person)" :disabled="deletingPersonnel" class="text-xs font-bold text-red-500 mx-2 disabled:opacity-50">
+                                                <span x-text="deletingPersonnel ? 'Removing...' : 'Remove'"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- MOBILE PERSONNEL CARDS -->
+                    <div class="block md:hidden space-y-3" x-show="personnel.length > 0">
+                        <template x-for="person in filteredPersonnel" :key="'mob-p-' + person.id">
+                            <div class="neu-flat p-4 space-y-2 text-sm">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-bold text-base" x-text="person.name"></div>
+                                        <div class="text-xs opacity-60" x-text="person.role"></div>
+                                    </div>
+                                    <span :class="person.status === 'Active' ? 'text-green-600 bg-green-50' : 'text-gray-500 bg-gray-50'" class="text-[10px] font-bold px-2 py-0.5 rounded border border-current uppercase" x-text="person.status"></span>
+                                </div>
+                                <div class="text-xs opacity-75">
+                                    <span class="opacity-50">Dept:</span> <span class="font-medium" x-text="person.dept"></span>
+                                </div>
+                                <div class="flex justify-end gap-3 pt-2 border-t border-gray-300/40">
+                                    <button @click="openEditModal(person)" class="text-xs font-bold text-blue-600 px-3 py-1 neu-flat btn-neu">Edit</button>
+                                    <button @click="deletePersonnel(person)" :disabled="deletingPersonnel" class="text-xs font-bold text-red-600 px-3 py-1 neu-flat btn-neu disabled:opacity-50">Remove</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 3. SERVER OPERATIONS VIEW -->
+            <template x-if="view === 'system'">
+                <div class="space-y-6 md:space-y-8">
+                    <!-- Health Section -->
+                    <div class="neu-flat p-4 md:p-6 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg md:text-xl font-bold tracking-tight">System Health</h3>
+                                <p class="text-xs opacity-60 mt-0.5">Live status from the FastAPI backend service.</p>
+                            </div>
+                            <button @click="checkHealth()" :disabled="checkingHealth" class="px-5 py-2.5 neu-flat btn-neu text-xs font-bold text-blue-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                                <span x-show="checkingHealth" class="animate-spin">⏳</span>
+                                <span x-text="checkingHealth ? 'Checking...' : 'Check Health'"></span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 pt-1">
+                            <div class="neu-inset p-3.5 md:p-4 rounded-xl flex items-center justify-between">
+                                <span class="text-xs uppercase font-bold opacity-60">Admin Proxy</span>
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded" 
+                                      :class="healthData.proxy === 'ONLINE' ? 'text-green-500' : 'text-red-500'" 
+                                      x-text="healthData.proxy"></span>
+                            </div>
+                            <div class="neu-inset p-3.5 md:p-4 rounded-xl flex items-center justify-between">
+                                <span class="text-xs uppercase font-bold opacity-60">Face Engine Backend</span>
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded" 
+                                      :class="healthData.backend === 'ONLINE' ? 'text-green-500' : 'text-red-500'" 
+                                      x-text="healthData.backend"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reload Registry Section -->
+                    <div class="neu-flat p-4 md:p-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6">
+                        <div>
+                            <h3 class="text-lg md:text-xl font-bold mb-1">Reload Registry</h3>
+                            <p class="text-xs md:text-sm opacity-60">Sync in-memory face encodings with Firebase.</p>
+                        </div>
+                        <button @click="reloadRegistry()" :disabled="reloadingRegistry" class="px-6 py-3 neu-flat btn-neu text-blue-600 font-bold text-sm disabled:opacity-50">
+                            <span x-text="reloadingRegistry ? 'Reloading...' : 'Sync Now'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Access History Logs -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-base md:text-lg font-bold">Access History Logs</h4>
+                            <span class="text-xs font-mono opacity-50" x-text="logs.length + ' total records'"></span>
+                        </div>
+
+                        <!-- DESKTOP TABLE -->
+                        <div class="hidden md:block">
+                            <div class="grid grid-cols-6 px-6 py-2 text-xs font-bold uppercase tracking-wider opacity-60">
+                                <div>Name</div>
+                                <div>Student ID</div>
+                                <div>Role</div>
+                                <div>Department</div>
+                                <div>Date & Time</div>
+                                <div class="text-right">Entry</div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <template x-for="log in logs" :key="log.id || Math.random()">
+                                    <div class="neu-flat px-6 py-4 rounded-xl grid grid-cols-6 items-center text-sm">
+                                        <div class="font-semibold truncate pr-2" x-text="log.name"></div>
+                                        <div class="font-mono text-xs opacity-80 truncate pr-2" x-text="log.person_id"></div>
+                                        <div class="opacity-75 truncate pr-2 text-xs" x-text="log.role"></div>
+                                        <div class="opacity-75 truncate pr-2 text-xs" x-text="log.department"></div>
+                                        <div class="text-xs opacity-70">
+                                            <span x-text="log.dateStr"></span>, <span class="font-mono" x-text="log.timeStr"></span>
+                                        </div>
+                                        <div class="text-right font-mono font-bold text-xs uppercase tracking-wider opacity-80" x-text="log.type"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- MOBILE CARD LIST -->
+                        <div class="block md:hidden space-y-3">
+                            <template x-for="log in logs" :key="'mob-hist-' + log.id">
+                                <div class="neu-flat p-4 space-y-2 text-sm">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-bold text-base" x-text="log.name"></div>
+                                            <div class="font-mono text-xs opacity-70" x-text="log.person_id"></div>
+                                        </div>
+                                        <span class="text-xs font-mono font-bold px-2 py-1 neu-inset text-blue-600 uppercase" x-text="log.type"></span>
+                                    </div>
+                                    <div class="flex justify-between text-xs opacity-80 pt-1 border-t border-gray-300/40">
+                                        <div><span class="opacity-50">Role:</span> <span class="font-medium" x-text="log.role"></span></div>
+                                        <div><span class="opacity-50">Dept:</span> <span class="font-medium" x-text="log.department"></span></div>
+                                    </div>
+                                    <div class="text-[11px] opacity-60 text-right">
+                                        <span x-text="log.dateStr"></span> • <span class="font-mono" x-text="log.timeStr"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Empty State -->
+                        <template x-if="logs.length === 0 && !loadingLogs">
+                            <div class="neu-flat p-8 text-center opacity-50 text-sm">
+                                No access logs found in the database.
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            
+        </main>
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <nav x-show="isLoggedIn" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#e2e8f0]/95 backdrop-blur-md border-t border-gray-300/60 px-4 py-2 flex justify-around items-center">
+        <button @click="view = 'dashboard'" :class="view === 'dashboard' ? 'text-blue-600 font-bold scale-105' : 'opacity-60'" class="flex flex-col items-center gap-1 text-[11px] transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            <span>Dashboard</span>
+        </button>
+        <button @click="view = 'personnel'" :class="view === 'personnel' ? 'text-blue-600 font-bold scale-105' : 'opacity-60'" class="flex flex-col items-center gap-1 text-[11px] transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <span>Personnel</span>
+        </button>
+        <button @click="view = 'system'" :class="view === 'system' ? 'text-blue-600 font-bold scale-105' : 'opacity-60'" class="flex flex-col items-center gap-1 text-[11px] transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span>Operations</span>
+        </button>
+        <button @click="logout()" class="flex flex-col items-center gap-1 text-[11px] text-red-500 font-semibold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            <span>Sign Out</span>
+        </button>
+    </nav>
+
+    <!-- MODALS (Full width on mobile, constrained on desktop) -->
+    <div x-cloak x-show="showAddModal" x-transition @keydown.escape.window="showAddModal = false" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div @click.outside="showAddModal = false" class="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 md:p-8 neu-flat">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold">Add Personnel</h3>
+                    <p class="text-sm opacity-60">Create a new face-auth access record.</p>
+                </div>
+                <button @click="showAddModal = false" class="text-2xl opacity-60 hover:opacity-100">×</button>
+            </div>
+            <form @submit.prevent="addPersonnel()" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">PERSONNEL ID *</label><input x-model="newPerson.person_id" required class="w-full text-sm" placeholder="e.g. 4021"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">FULL NAME *</label><input x-model="newPerson.name" required class="w-full text-sm" placeholder="Full name"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">DEPARTMENT</label><input x-model="newPerson.department" class="w-full text-sm" placeholder="Department"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">ROLE</label><input x-model="newPerson.role" class="w-full text-sm" placeholder="Role"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">POSTING</label><input x-model="newPerson.posting" class="w-full text-sm" placeholder="Posting"></div>
+                    <label class="neu-inset p-3 flex items-center gap-3 cursor-pointer"><input type="checkbox" x-model="newPerson.authorized"><span class="text-sm font-semibold">Grant access authorization</span></label>
+                </div>
+                <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">FACE PHOTO *</label><input type="file" accept="image/*" required class="w-full text-sm" @change="newPerson.photo = $event.target.files[0]"></div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="showAddModal = false" :disabled="addingPersonnel" class="px-5 py-3 neu-flat btn-neu font-bold text-sm">Cancel</button>
+                    <button type="submit" :disabled="addingPersonnel" class="px-5 py-3 neu-flat btn-neu text-blue-600 font-bold text-sm disabled:opacity-50"><span x-text="addingPersonnel ? 'Saving...' : 'Add Personnel'"></span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div x-cloak x-show="showEditModal" x-transition @keydown.escape.window="showEditModal = false" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div @click.outside="showEditModal = false" class="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 md:p-8 neu-flat">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold">Edit Personnel</h3>
+                    <p class="text-sm opacity-60">Update this face-auth access record.</p>
+                </div>
+                <button type="button" @click="showEditModal = false" class="text-2xl opacity-60 hover:opacity-100">×</button>
+            </div>
+            <form @submit.prevent="updatePersonnel()" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="neu-inset p-3 opacity-60"><label class="block text-xs font-bold opacity-60 mb-2">PERSONNEL ID</label><input x-model="editingPerson.person_id" readonly class="w-full cursor-not-allowed text-sm"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">FULL NAME *</label><input x-model="editingPerson.name" required class="w-full text-sm" placeholder="Full name"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">DEPARTMENT</label><input x-model="editingPerson.department" class="w-full text-sm" placeholder="Department"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">ROLE</label><input x-model="editingPerson.role" class="w-full text-sm" placeholder="Role"></div>
+                    <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">POSTING</label><input x-model="editingPerson.posting" class="w-full text-sm" placeholder="Posting"></div>
+                    <label class="neu-inset p-3 flex items-center gap-3 cursor-pointer"><input type="checkbox" x-model="editingPerson.authorized"><span class="text-sm font-semibold">Grant access authorization</span></label>
+                </div>
+                <div class="neu-inset p-3"><label class="block text-xs font-bold opacity-60 mb-2">REPLACE FACE PHOTO <span class="normal-case font-normal">(optional)</span></label><input type="file" accept="image/*" class="w-full text-sm" @change="editingPerson.photo = $event.target.files[0]"></div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="showEditModal = false" :disabled="updatingPersonnel" class="px-5 py-3 neu-flat btn-neu font-bold text-sm">Cancel</button>
+                    <button type="submit" :disabled="updatingPersonnel" class="px-5 py-3 neu-flat btn-neu text-blue-600 font-bold text-sm disabled:opacity-50"><span x-text="updatingPersonnel ? 'Updating...' : 'Update Personnel'"></span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN TYPESCRIPT MODULE -->
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
