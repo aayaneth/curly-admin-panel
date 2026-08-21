@@ -247,16 +247,17 @@ Alpine.data('adminPanel', () => ({
     // METHODS
     async loginWithGoogle() {
     try {
-        await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        this.showNotification(`Welcome back, ${result.user.displayName || 'Admin'}`, 'success');
     } catch (error: any) {
-        // If popup is blocked by browser/ad-blocker/iOS Safari, fall back to redirect
-        if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-            console.warn("Popup blocked. Falling back to signInWithRedirect...");
-            await signInWithRedirect(auth, provider);
-            return;
-        }
         console.error("Firebase Auth Error:", error);
-        this.showNotification(error.message, 'error');
+        if (error.code === 'auth/popup-blocked') {
+            this.showNotification('Please allow pop-ups for this site in your browser settings to sign in.', 'warning');
+        } else if (error.code === 'auth/unauthorized-domain') {
+            this.showNotification('Domain not authorized in Firebase Console.', 'error');
+        } else {
+            this.showNotification(error.message, 'error');
+        }
     }
 },
 
