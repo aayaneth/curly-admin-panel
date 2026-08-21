@@ -1,17 +1,20 @@
 import Alpine from 'alpinejs';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, getDocs } from 'firebase/firestore';
 
 // --- TYPE DEFINITIONS ---
 interface Person {
     id: string;
+    person_id?: string;
     name: string;
     dept: string;
+    department?: string;
     role: string;
     posting: string;
     enrolled: boolean;
     status: 'Active' | 'Inactive';
+    authorized?: boolean;
 }
 
 interface NewPerson {
@@ -49,7 +52,7 @@ interface LogData {
 }
 
 // --- FIREBASE INITIALIZATION ---
- const firebaseConfig = {
+const firebaseConfig = {
     apiKey: "AIzaSyDf6Z_YHkKYFDwK-cPzYT6lGFLsi5VxPd4",
     authDomain: "facerec-80369.firebaseapp.com",
     projectId: "facerec-80369",
@@ -74,7 +77,7 @@ Alpine.data('adminPanel', () => ({
     view: 'dashboard',
     darkMode: localStorage.getItem('theme') === 'dark',
     serverRunning: true,
-    API_BASE_URL: 'http://localhost:8000',
+    API_BASE_URL: (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000',
     adminKey: '',
 
     searchQuery: '',
@@ -234,20 +237,10 @@ Alpine.data('adminPanel', () => ({
     },
 
     // METHODS
-   async loginWithGoogle() {
+    async loginWithGoogle() {
         try {
-            // This just triggers the popup. 
-            // Once successful, the init() listener above will automatically catch it and load the dashboard!
             const result = await signInWithPopup(auth, provider);
-            
-            const allowedAdmins: string[] = ['your.email@gmail.com'];
-            if (result.user.email && !allowedAdmins.includes(result.user.email) && false) {
-                // Keep the '&& false' or remove it depending on if you want to strictly enforce the email whitelist
-                await signOut(auth);
-                this.showNotification('Unauthorized email.', 'error');
-            } else {
-                this.showNotification(`Welcome back, ${result.user.displayName || 'Admin'}`, 'success');
-            }
+            this.showNotification(`Welcome back, ${result.user.displayName || 'Admin'}`, 'success');
         } catch (error: any) {
             console.error("Firebase Auth Error:", error);
             this.showNotification(error.message, 'error');
@@ -386,21 +379,30 @@ Alpine.data('adminPanel', () => ({
                 let timeStr = '—';
 
                 if (data.timestamp) {
-                    rawDate = typeof data.timestamp.toDate === 'function' 
-                        ? data.timestamp.toDate() 
-                        : new Date(data.timestamp);
+                    if (typeof data.timestamp.toDate === 'function') {
+                        rawDate = data.timestamp.toDate();
+                    } else if (data.timestamp instanceof Date) {
+                        rawDate = data.timestamp;
+                    } else {
+                        const parsed = new Date(data.timestamp);
+                        if (!isNaN(parsed.getTime())) {
+                            rawDate = parsed;
+                        }
+                    }
 
-                    dateStr = rawDate.toLocaleDateString([], {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                    });
+                    if (rawDate) {
+                        dateStr = rawDate.toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
 
-                    timeStr = rawDate.toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
+                        timeStr = rawDate.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                    }
                 }
 
                 fetchedLogs.push({
