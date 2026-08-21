@@ -252,11 +252,9 @@ Alpine.data('adminPanel', () => ({
     } catch (error: any) {
         console.error("Firebase Auth Error:", error);
         if (error.code === 'auth/popup-blocked') {
-            this.showNotification('Pop-up blocked by browser. Please allow pop-ups for this site in your address bar.', 'warning');
+            this.showNotification('Please allow popups in your address bar to log in.', 'warning');
         } else if (error.code === 'auth/unauthorized-domain') {
-            this.showNotification('This domain is not authorized in Firebase Console.', 'error');
-        } else if (error.code === 'auth/popup-closed-by-user') {
-            // User closed the popup window, no action needed
+            this.showNotification('Domain not authorized in Firebase Console.', 'error');
         } else {
             this.showNotification(error.message, 'error');
         }
