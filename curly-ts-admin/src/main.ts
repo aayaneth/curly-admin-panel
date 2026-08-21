@@ -1,6 +1,6 @@
 import Alpine from 'alpinejs';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult} from 'firebase/auth';
 import { getFirestore, collection, query, orderBy, getDocs } from 'firebase/firestore';
 
 // --- TYPE DEFINITIONS ---
@@ -183,34 +183,42 @@ Alpine.data('adminPanel', () => ({
     },
 
     init() {
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                this.userEmail = user.email || '';
-                this.userRole = user.displayName || 'Admin';
-                this.userAvatar = user.photoURL || '';
-                this.isLoggedIn = true;
-
-                // Load stored admin key for this Google account
-                this.loadUserAdminKey();
-
-                // Auto-fetch dashboard data
-                this.fetchAccessLogs();
-                setInterval(() => {
-                    if (this.view === 'dashboard' || this.view === 'system') {
-                        this.fetchAccessLogs();
-                    }
-                }, 10000);
-            } else {
-                this.isLoggedIn = false;
-                this.userEmail = '';
-                this.adminKey = '';
-            }
-        });
-
-        if (this.view === 'system') {
-            this.checkHealth();
+    // Catch result if the user was redirected
+    getRedirectResult(auth).catch((error) => {
+        if (error) {
+            console.error("Redirect Login Error:", error);
+            this.showNotification(error.message, 'error');
         }
-    },
+    });
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            this.userEmail = user.email || '';
+            this.userRole = user.displayName || 'Admin';
+            this.userAvatar = user.photoURL || '';
+            this.isLoggedIn = true;
+
+            // Load stored admin key for this Google account
+            this.loadUserAdminKey();
+
+            // Auto-fetch dashboard data
+            this.fetchAccessLogs();
+            setInterval(() => {
+                if (this.view === 'dashboard' || this.view === 'system') {
+                    this.fetchAccessLogs();
+                }
+            }, 10000);
+        } else {
+            this.isLoggedIn = false;
+            this.userEmail = '';
+            this.adminKey = '';
+        }
+    });
+
+    if (this.view === 'system') {
+        this.checkHealth();
+    }
+},
 
     // GETTERS
     get todayLogs(): LogData[] {
@@ -238,14 +246,19 @@ Alpine.data('adminPanel', () => ({
 
     // METHODS
     async loginWithGoogle() {
-        try {
-            const result = await signInWithPopup(auth, provider);
-            this.showNotification(`Welcome back, ${result.user.displayName || 'Admin'}`, 'success');
-        } catch (error: any) {
-            console.error("Firebase Auth Error:", error);
-            this.showNotification(error.message, 'error');
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error: any) {
+        // If popup is blocked by browser/ad-blocker/iOS Safari, fall back to redirect
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+            console.warn("Popup blocked. Falling back to signInWithRedirect...");
+            await signInWithRedirect(auth, provider);
+            return;
         }
-    },
+        console.error("Firebase Auth Error:", error);
+        this.showNotification(error.message, 'error');
+    }
+},
 
     async logout() {
         try {
