@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult} from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult, setPersistence,
+    browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, collection, query, orderBy, getDocs } from 'firebase/firestore';
 
 // --- TYPE DEFINITIONS ---
@@ -62,10 +63,19 @@ const firebaseConfig = {
     measurementId: "G-LYQYVRCZ7V"
 };
 
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+// Force Google to show account selection prompt cleanly
+provider.setCustomParameters({
+    prompt: 'select_account'
+});
 const db = getFirestore(app);
+
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.error("Auth persistence error:", err);
+});
 
 // --- ALPINE COMPONENT LOGIC ---
 Alpine.data('adminPanel', () => ({
@@ -183,14 +193,6 @@ Alpine.data('adminPanel', () => ({
     },
 
     init() {
-    // Catch result if the user was redirected
-    getRedirectResult(auth).catch((error) => {
-        if (error) {
-            console.error("Redirect Login Error:", error);
-            this.showNotification(error.message, 'error');
-        }
-    });
-
     onAuthStateChanged(auth, (user) => {
         if (user) {
             this.userEmail = user.email || '';
@@ -198,11 +200,9 @@ Alpine.data('adminPanel', () => ({
             this.userAvatar = user.photoURL || '';
             this.isLoggedIn = true;
 
-            // Load stored admin key for this Google account
             this.loadUserAdminKey();
-
-            // Auto-fetch dashboard data
             this.fetchAccessLogs();
+            
             setInterval(() => {
                 if (this.view === 'dashboard' || this.view === 'system') {
                     this.fetchAccessLogs();
@@ -252,9 +252,11 @@ Alpine.data('adminPanel', () => ({
     } catch (error: any) {
         console.error("Firebase Auth Error:", error);
         if (error.code === 'auth/popup-blocked') {
-            this.showNotification('Please allow pop-ups for this site in your browser settings to sign in.', 'warning');
+            this.showNotification('Pop-up blocked by browser. Please allow pop-ups for this site in your address bar.', 'warning');
         } else if (error.code === 'auth/unauthorized-domain') {
-            this.showNotification('Domain not authorized in Firebase Console.', 'error');
+            this.showNotification('This domain is not authorized in Firebase Console.', 'error');
+        } else if (error.code === 'auth/popup-closed-by-user') {
+            // User closed the popup window, no action needed
         } else {
             this.showNotification(error.message, 'error');
         }
