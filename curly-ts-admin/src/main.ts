@@ -1,6 +1,6 @@
 import Alpine from 'alpinejs';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithRedirect, getRedirectResult, setPersistence,
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, setPersistence,
     browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, collection, query, orderBy, getDocs } from 'firebase/firestore';
 
