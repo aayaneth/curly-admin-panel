@@ -42,15 +42,17 @@ app = FastAPI(title="Face Access Admin Proxy", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$", # Matches all Vercel production & preview domains
     allow_origins=[
-        "http://localhost:5500", 
-        "http://127.0.0.1:5500",
-        "http://localhost:5173", # Allows your local Vite frontend
         "https://curly-admin-panel-six.vercel.app",
-    ], 
+        "http://localhost:5173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.get("/health")
@@ -103,8 +105,12 @@ async def get_activity_logs():
 
 # --- TRANSPARENT PROXY ROUTE ---
 
-@app.api_route("/admin/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route("/admin/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 async def proxy_admin_routes(path: str, request: Request):
+    # Short-circuit OPTIONS so preflight succeeds immediately without hitting the backend
+    if request.method == "OPTIONS":
+        return Response(status_code=200)
+
     url = f"/admin/{path}"
     headers = {"X-Admin-Key": ADMIN_API_KEY}
     
